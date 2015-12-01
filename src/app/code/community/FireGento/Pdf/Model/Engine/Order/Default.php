@@ -65,7 +65,6 @@ class FireGento_Pdf_Model_Engine_Order_Default extends FireGento_Pdf_Model_Engin
                 Mage::app()->getLocale()->emulate($order->getStoreId());
                 Mage::app()->setCurrentStore($order->getStoreId());
             }
-            //$order = $order->getOrder();
             $this->setOrder($order);
 
             $page = $this->newPage();
@@ -73,12 +72,12 @@ class FireGento_Pdf_Model_Engine_Order_Default extends FireGento_Pdf_Model_Engin
             $this->insertAddressesAndHeader($page, $order, $order);
 
             $this->_setFontRegular($page, 9);
+
             $this->insertTableHeader($page);
 
             $this->y -= 20;
 
             $position = 0;
-
             foreach($order->getAllItems() as $item)
             {
                 /**
@@ -221,12 +220,11 @@ class FireGento_Pdf_Model_Engine_Order_Default extends FireGento_Pdf_Model_Engin
         }
     }
 
-
     /**
      * Insert Totals Block
      *
      * @param  object $page   Current page object of Zend_Pdf
-     * @param  object $source Fields of footer
+     * @param  Mage_Sales_Model_Abstract $source
      *
      * @return Zend_Pdf_Page
      */
@@ -234,40 +232,30 @@ class FireGento_Pdf_Model_Engine_Order_Default extends FireGento_Pdf_Model_Engin
     {
         $this->y -= 15;
 
-        $order = $source->getOrder();
-        if(!is_object($order)) {
-            $order = $source;
-            $source->setOrder($order);
-        }
-
-        parent::insertTotals($page, $source);
-
-        return $page;
-        /*
         $totalTax = 0;
         $shippingTaxRate = 0;
-        $shippingTaxAmount = $order->getShippingTaxAmount();
+        $shippingTaxAmount = $source->getShippingTaxAmount();
 
         if ($shippingTaxAmount > 0) {
             $shippingTaxRate
-                = $order->getShippingTaxAmount() * 100
-                / ($order->getShippingInclTax()
-                    - $order->getShippingTaxAmount());
+                = $source->getShippingTaxAmount() * 100
+                / ($source->getShippingInclTax()
+                    - $source->getShippingTaxAmount());
         }
 
         $groupedTax = array();
 
         $items['items'] = array();
         foreach ($source->getAllItems() as $item) {
-            if ($item->getOrderItem()->getParentItem()) {
+            if ($item->getParentItem()) {
                 continue;
             }
-            $items['items'][] = $item->getOrderItem()->toArray();
+            $items['items'][] = $item->toArray();
         }
 
         array_push(
             $items['items'], array(
-                'row_invoiced'     => $order->getShippingInvoiced(),
+                'row_invoiced'     => $source->getShippingInvoiced(),
                 'tax_inc_subtotal' => false,
                 'tax_percent'      => $shippingTaxRate,
                 'tax_amount'       => $shippingTaxAmount
@@ -315,9 +303,12 @@ class FireGento_Pdf_Model_Engine_Order_Default extends FireGento_Pdf_Model_Engin
         );
 
         foreach ($totals as $total) {
-            $total->setOrder($order)->setSource($source);
+            /**@var Mage_Sales_Model_Order_Pdf_Total_Default $total */
+            /**@var Mage_Tax_Model_Sales_Pdf_Subtotal $total */
+            $total->setOrder($source)->setSource($source);
 
-            if ($total->canDisplay()) {
+            if ($total->canDisplay())
+            {
                 $total->setFontSize(10);
                 // fix Magento 1.8 bug, so that taxes for shipping do not appear twice
                 // see https://github.com/firegento/firegento-pdf/issues/106
@@ -325,7 +316,8 @@ class FireGento_Pdf_Model_Engine_Order_Default extends FireGento_Pdf_Model_Engin
                     'unserialize', array_unique(array_map('serialize',
                         $total->getTotalsForDisplay()))
                 );
-                foreach ($uniqueTotalsForDisplay as $totalData) {
+                foreach ($uniqueTotalsForDisplay as $totalData)
+                {
                     $label = $this->fixNumberFormat($totalData['label']);
                     $lineBlock['lines'][] = array(
                         array(
@@ -347,9 +339,7 @@ class FireGento_Pdf_Model_Engine_Order_Default extends FireGento_Pdf_Model_Engin
         $page = $this->drawLineBlocks($page, array($lineBlock));
 
         return $page;
-        */
     }
-
 
 
     /**
@@ -364,7 +354,7 @@ class FireGento_Pdf_Model_Engine_Order_Default extends FireGento_Pdf_Model_Engin
         parent::_initRenderer($type);
 
         $this->_renderers['default'] = array(
-            'model'    => 'firegento_pdf/items_default',
+            'model'    => 'firegento_pdf/items_order_default',
             'renderer' => null
         );
         $this->_renderers['grouped'] = array(
